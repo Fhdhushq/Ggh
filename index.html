@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Телепрограмма</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+        .program-item {
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        .program-time {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .current-program {
+            background-color: lightgreen;
+        }
+        #channel-buttons button {
+            margin-right: 5px;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        #channel-buttons {
+          margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Телепрограмма</h1>
+    <div id="channel-buttons">
+        <!-- Кнопки каналов будут добавлены сюда JavaScript -->
+    </div>
+    <div id="program-list">
+        <!-- Здесь будут отображаться программы -->
+    </div>
+
+    <script>
+        const channels = {
+            "1": "https://tv.mail.ru/vologda/channel/850/",
+            "2": "https://tv.mail.ru/vologda/channel/1868/",
+            "3": "https://tv.mail.ru/vologda/channel/2060/",
+            "4": "https://tv.mail.ru/vologda/channel/1395/",
+            "5": "https://tv.mail.ru/vologda/channel/963/",
+            "6": "https://tv.mail.ru/vologda/channel/1169/",
+            "7": "https://tv.mail.ru/vologda/channel/2652/",
+            "8": "https://tv.mail.ru/vologda/channel/1162/",
+            "9": "https://tv.mail.ru/vologda/channel/3073/",
+            "10": "https://tv.mail.ru/vologda/channel/948/",
+            "11": "https://tv.mail.ru/vologda/channel/1148/",
+            "12": "https://tv.mail.ru/vologda/channel/1193/",
+            "13": "https://tv.mail.ru/vologda/channel/1112/",
+            "14": "https://tv.mail.ru/vologda/channel/1051/",
+            "15": "https://tv.mail.ru/vologda/channel/1091/",
+            "16": "https://tv.mail.ru/vologda/channel/1671/",
+            "17": "https://tv.mail.ru/vologda/channel/986/",
+            "18": "https://tv.mail.ru/vologda/channel/717/",
+            "19": "https://tv.mail.ru/vologda/channel/2287/",
+            "20": "https://tv.mail.ru/vologda/channel/1111/"
+        };
+
+        const channelButtonsDiv = document.getElementById('channel-buttons');
+        const programListDiv = document.getElementById('program-list');
+
+        for (const channelNumber in channels) {
+            const button = document.createElement('button');
+            button.textContent = channelNumber;
+            button.onclick = () => loadPrograms(channels[channelNumber]);
+            channelButtonsDiv.appendChild(button);
+        }
+
+        async function loadPrograms(url) {
+            programListDiv.innerHTML = "";
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const programs = doc.querySelectorAll('a.p-programms__item__inner');
+
+                if(programs.length === 0) {
+                  programListDiv.textContent = 'На этом канале нет программ на сегодня';
+                  return;
+                }
+
+                const now = new Date();
+                let currentProgramFound = false;
+
+                programs.forEach(program => {
+                    const timeElement = program.querySelector('span.p-programms__item__time-value');
+                    const titleElement = program.querySelector('span.p-programms__item__name-link');
+
+                    if (timeElement && titleElement) {
+                         const timeString = timeElement.textContent.trim();
+                        const [hours, minutes] = timeString.split(':').map(Number);
+                        const programStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+
+                         const programItemDiv = document.createElement('div');
+                         programItemDiv.classList.add('program-item');
+
+                         const timeSpan = document.createElement('span');
+                         timeSpan.classList.add('program-time');
+                         timeSpan.textContent = timeString;
+
+                         const titleSpan = document.createElement('span');
+                         titleSpan.textContent = titleElement.textContent.trim();
+
+                         programItemDiv.appendChild(timeSpan);
+                         programItemDiv.appendChild(titleSpan);
+                         programListDiv.appendChild(programItemDiv);
+
+                         if (!currentProgramFound && now >= programStartTime) {
+                            const nextProgram = programs[Array.from(programs).indexOf(program) + 1];
+
+                             if (nextProgram) {
+                                const nextTimeElement = nextProgram.querySelector('span.p-programms__item__time-value');
+
+                                if(nextTimeElement){
+                                   const nextTimeString = nextTimeElement.textContent.trim();
+                                   const [nextHours, nextMinutes] = nextTimeString.split(':').map(Number);
+                                   const programEndTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), nextHours, nextMinutes);
+
+                                   if (now < programEndTime) {
+                                     programItemDiv.classList.add('current-program');
+                                     currentProgramFound = true;
+                                   }
+                                 } else {
+                                   programItemDiv.classList.add('current-program');
+                                   currentProgramFound = true;
+                                 }
+
+
+                            } else {
+                                programItemDiv.classList.add('current-program');
+                                currentProgramFound = true;
+                             }
+                         }
+
+                    }
+                });
+            } catch (error) {
+                programListDiv.textContent = 'Ошибка загрузки данных: ' + error;
+            }
+        }
+    </script>
+</body>
+</html>
